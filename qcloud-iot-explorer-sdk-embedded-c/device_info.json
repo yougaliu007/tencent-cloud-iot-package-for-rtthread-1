@@ -1,0 +1,29 @@
+{
+    "auth_mode":"KEY",
+
+    "productId":"0WUKPUCOTC",
+    "productSecret":"YOUR_PRODUCT_SECRET",
+    "deviceName":"GW001",
+
+    "key_deviceinfo":{    
+        "deviceSecret":"lKOlCueXsih1OZdjdd2TWA=="
+    },
+
+    "cert_deviceinfo":{
+        "devCertFile":"YOUR_DEVICE_CERT_FILE_NAME",
+        "devPrivateKeyFile":"YOUR_DEVICE_PRIVATE_KEY_FILE_NAME"
+    },
+
+    "subDev":{
+        "subdev_num":6,
+        "subdev_list":
+        [
+                {"sub_productId": "BK7EEF4UIB", "sub_devName": "dev001"},
+                {"sub_productId": "BK7EEF4UIB", "sub_devName": "dev002"},
+                {"sub_productId": "BK7EEF4UIB", "sub_devName": "dev003"},
+                {"sub_productId": "7P3KIFQ1JD", "sub_devName": "test001"},
+                {"sub_productId": "7P3KIFQ1JD", "sub_devName": "test002"},
+                {"sub_productId": "7P3KIFQ1JD", "sub_devName": "test003"}               
+        ]     
+    }
+}
