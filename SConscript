@@ -14,6 +14,7 @@ sample_mqtt_basic_src  = []
 sample_raw_data_src  = []
 sample_ota_src  = []
 sample_gateway_src  = []
+sample_dyn_src = []
 
 CPPPATH = []
 CPPDEFINES = []
@@ -33,7 +34,6 @@ src_base += Glob('qcloud-iot-explorer-sdk-embedded-c/sdk_src/network/*.c')
 src_base += Glob('qcloud-iot-explorer-sdk-embedded-c/sdk_src/network/socket/*.c')
 src_base += Glob('qcloud-iot-explorer-sdk-embedded-c/sdk_src/network/tls/*.c')
 src_base += Glob('ports/rtthread/*.c')
-SrcRemove(src_base, 'qcloud-iot-explorer-sdk-embedded-c/sdk_src/utils/utils_aes.c')
 SrcRemove(src_base, 'qcloud-iot-explorer-sdk-embedded-c/sdk_src/utils/qcloud_iot_ca.c')	
 SrcRemove(src_base, 'ports/rtthread/HAL_UDP_rtthread.c')
 
@@ -66,9 +66,23 @@ if GetDepend(['PKG_USING_TENCENT_IOT_EXPLORER_TLS']):
 		
 else:
 	CPPDEFINES += ['AUTH_WITH_NOTLS']
+
+#dyn src file	
+if GetDepend(['PKG_USING_DYN_REG']):
+    sample_dyn_src += Glob('samples/dynreg_dev/dynreg_dev_sample.c')
+    src_base += Glob('qcloud-iot-explorer-sdk-embedded-c/sdk_src/services/dynreg/*.c')
+    CPPDEFINES += ['DEV_DYN_REG_ENABLED']
+
+group = DefineGroup('sample_dyn_reg', sample_dyn_src, depend = ['PKG_USING_DYN_REG'], CPPPATH = CPPPATH, LOCAL_CCFLAGS = LOCAL_CCFLAGS, CPPDEFINES = CPPDEFINES)
+
+#Err log upload used	
+if GetDepend(['PKG_USING_LOG_UPLOAD']):
+	src_base += Glob('qcloud-iot-explorer-sdk-embedded-c/sdk_src/services/log/*.c')
+	CPPDEFINES += ['LOG_UPLOAD']
+
+if GetDepend(['PKG_USING_MULTITHREAD_ENABLED']):	
+	CPPDEFINES += ['MULTITHREAD_ENABLED']
 	
-
-
 #IoT Explorer C-SDK core
 group = DefineGroup('tencent-iot-explorer', src_base, depend = ['PKG_USING_TENCENT_IOT_EXPLORER'], CPPPATH = CPPPATH, LOCAL_CCFLAGS = LOCAL_CCFLAGS, CPPDEFINES = CPPDEFINES)
 	

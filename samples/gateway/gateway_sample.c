@@ -23,9 +23,9 @@
 #include "qcloud_iot_export.h"
 #include "rtthread.h"
 
-#define GATEWAY_THREAD_STACK_SIZE 	6144
-#define YEILD_THREAD_STACK_SIZE 	4096
-#define SUBDEV1_THREAD_STACK_SIZE 	6144
+#define GATEWAY_THREAD_STACK_SIZE   6144
+#define YEILD_THREAD_STACK_SIZE     4096
+#define SUBDEV1_THREAD_STACK_SIZE   6144
 
 static int running_state = 0;
 
@@ -36,13 +36,10 @@ static int running_state = 0;
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
 #define LIGHT_SUB_DEV_PRODUCT_ID    "BK7EEF4UIB"
 #define LIGHT_SUB_DEV_NAME          "dev01"
-extern void* sub_dev1_thread(void *ptr, char *product_id, char *device_name);
+extern void* sub_dev1_thread(void *user_arg, char *product_id, char *device_name);
 #endif
 
-
 static int sg_sub_packet_id = -1;
-static bool sg_thread_running = true;
-
 static GatewayDeviceInfo sg_GWdevInfo;
 
 #ifdef AUTH_MODE_CERT
@@ -50,6 +47,10 @@ static char sg_cert_file[PATH_MAX + 1];      // full path of device cert file
 static char sg_key_file[PATH_MAX + 1];       // full path of device key file
 #endif
 
+int get_gateway_running_state(void)
+{
+    return running_state;
+}
 
 void _event_handler(void *client, void *context, MQTTEventMsg *msg)
 {
@@ -169,35 +170,13 @@ static int _setup_connect_init_params(GatewayInitParam* init_params)
 }
 
 /**
- * yield thread runner
- */
-static void *gateway_yield_thread(void *ptr)
-{
-
-    int rc = QCLOUD_RET_SUCCESS;
-    void *pClient = ptr;
-	
-    Log_d("gateway yield thread start ...");
-    while (sg_thread_running) {
-        rc = IOT_Gateway_Yield(pClient, 200);
-        if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
-            continue;
-        } else if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
-            Log_e("Something goes error: %d", rc);
-            //break;
-        }
-    }
-    return NULL;
-}
-
-/**
  * sub dev thread runner
  */
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  //show subdev with data template. 
-static void *sub_dev_thread(void *ptr)
+static void sub_dev_thread(void *user_arg)
 {
-    return sub_dev1_thread(ptr, LIGHT_SUB_DEV_PRODUCT_ID, LIGHT_SUB_DEV_NAME);
+    sub_dev1_thread(user_arg, LIGHT_SUB_DEV_PRODUCT_ID, LIGHT_SUB_DEV_NAME);
 }
 #endif
 
@@ -215,8 +194,9 @@ int gateway_thread(void)
     DeviceInfo *subDevInfo;
 
 #ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
-    rt_thread_t light_thread_t = NULL;
+    ThreadParams sub_dev1_thread_params = {0};
 #endif
+
 
     IOT_Log_Set_Level(eLOG_DEBUG);
 
@@ -233,18 +213,13 @@ int gateway_thread(void)
         return QCLOUD_ERR_FAILURE;
     }
 
-    //mqtt_yeild can be called by only one thread when multi-thread run, so do not use sync operation below
-    rt_thread_t yield_thread_t;
-    yield_thread_t = HAL_ThreadCreate(YEILD_THREAD_STACK_SIZE,\
-										RT_THREAD_PRIORITY_MAX / 2 - 2, \
-										"yield_thread", gateway_yield_thread, client);
-    if (yield_thread_t == NULL) {
-        Log_e("create yield thread fail");
+#ifdef MULTITHREAD_ENABLED
+    rc = IOT_Gateway_Start_Yield_Thread(client);
+    if (rc != QCLOUD_RET_SUCCESS) {
+        Log_e("init params err,rc=%d", rc);
         goto exit;
     }
-
-    HAL_SleepMs(1000); /*wait yield_thread start running*/
-
+#endif
     //set GateWay device info
     param.product_id =  gw->gw_info.product_id;
     param.device_name = gw->gw_info.device_name;
@@ -273,26 +248,29 @@ int gateway_thread(void)
     SubscribeParams sub_param = DEFAULT_SUB_PARAMS;
     for (i = 0; i < gw->sub_dev_num; i++) {
         subDevInfo = &gw->sub_dev_info[i];
+#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  // subdev with data template example.
+        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) &&
+            (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
+            sub_dev1_thread_params.thread_func = sub_dev_thread;
+            sub_dev1_thread_params.thread_name = "sub_dev1_thread";
+            sub_dev1_thread_params.user_arg    = client;
+            sub_dev1_thread_params.stack_size  = 4096;
+            sub_dev1_thread_params.priority    = RT_THREAD_PRIORITY_MAX / 2 - 1;
 
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  //subdev with data template example.  
-        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID))
-            && (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
-            light_thread_t = HAL_ThreadCreate(SUBDEV1_THREAD_STACK_SIZE,\
-										RT_THREAD_PRIORITY_MAX / 2 - 1, \
-										"sub_dev1_thread", sub_dev_thread, client);
-            if (light_thread_t == NULL) {
-                Log_e("create sub_dev light thread fail");
-                goto exit;
+            int rc = HAL_ThreadCreate(&sub_dev1_thread_params);
+            if (rc) {
+                Log_e("create sub_dev1_thread fail: %d", rc);
+                return QCLOUD_ERR_FAILURE;
             } else {
                 Log_e("create sub_dev light thread success");
-				running_state = 1;
+                running_state = 1;
             }
-			continue;
+            continue;
         }
-#endif        
+#endif
 
-        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1); 
-		size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/down/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
+        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);
+        size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/down/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
 
         if (size < 0 || size > MAX_SIZE_OF_TOPIC) {
             Log_e("buf size < topic length!");
@@ -308,45 +286,43 @@ int gateway_thread(void)
         }
     }
 
-	HAL_SleepMs(2000); /*wait subcribe ack*/
+    HAL_SleepMs(2000); /*wait subcribe ack*/
 
 //  publish to sub-device data_template up stream topic for example
     PublishParams pub_param = DEFAULT_PUB_PARAMS;
     pub_param.qos = QOS0;
-	
-//pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{\"data\":\"err reply wil received\"}}"; 
-	pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{}}"; 
-    pub_param.payload_len = strlen(pub_param.payload);	
+    pub_param.payload = "{\"method\":\"report\",\"clientToken\":\"123\",\"params\":{}}";
+    pub_param.payload_len = strlen(pub_param.payload);
     for (i = 0; i < gw->sub_dev_num; i++) {
         subDevInfo = &gw->sub_dev_info[i];
 
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT   
-        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID)) 
-				&& (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
-			continue;
+#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
+        if ((0 == strcmp(subDevInfo->product_id, LIGHT_SUB_DEV_PRODUCT_ID))
+            && (0 == strcmp(subDevInfo->device_name, LIGHT_SUB_DEV_NAME))) {
+            continue;
         }
-#endif		
-        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);	
-		size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/up/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
+#endif
+        memset(topic_filter, 0, MAX_SIZE_OF_TOPIC + 1);
+        size = HAL_Snprintf(topic_filter, MAX_SIZE_OF_TOPIC, "$thing/up/property/%s/%s", subDevInfo->product_id, subDevInfo->device_name);
         if (size < 0 || size > MAX_SIZE_OF_TOPIC) {
             Log_e("buf size < topic length!");
             return QCLOUD_ERR_FAILURE;
         }
-		
+
         rc = IOT_Gateway_Publish(client, topic_filter, &pub_param);
         if (rc < 0) {
             Log_e("IOT_Gateway_Publish fail.");
-        }		
+        }
     }
 
 exit:
 
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  
-	if(NULL != light_thread_t){
-		while(running_state){};
-	}	 
-#endif	
-	running_state = 0;
+#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT
+    if(NULL != sub_dev1_thread_params.thread_id) {
+        while(running_state) {};
+    }
+#endif
+    running_state = 0;
 
     //set GateWay device info
     param.product_id =  gw->gw_info.product_id;
@@ -366,25 +342,13 @@ exit:
             Log_d("subDev Pid:%s devName:%s offline success.", subDevInfo->product_id, subDevInfo->device_name);
         }
     }
-	
+
     if (errCount > 0) {
         Log_e("%d of %d sub devices offline fail", errCount, gw->sub_dev_num);
     }
 
-	//stop running thread
-    sg_thread_running = false;	
-	HAL_SleepMs(1000); /*make sure no thread use client before destroy*/
-	
+    IOT_Gateway_Stop_Yield_Thread(client);
     rc = IOT_Gateway_Destroy(client);
-    if (NULL != yield_thread_t) {
-//        HAL_ThreadDestroy((void *)yield_thread_t);
-    }
-
-#ifdef SUB_DEV_USE_DATA_TEMPLATE_LIGHT  //show subdev with data template.
-    if (NULL != light_thread_t) {
-        HAL_ThreadDestroy((void *)light_thread_t);
-    }
-#endif
 
     return rc;
 }
@@ -393,47 +357,36 @@ static int tc_gateway_example(int argc, char **argv)
 {
     rt_thread_t tid;
     int stack_size = GATEWAY_THREAD_STACK_SIZE;
-	
+
     //init log level
     IOT_Log_Set_Level(eLOG_DEBUG);
 
-	if (2 == argc)
-	{
-		if (!strcmp("start", argv[1]))
-		{
-			if (1 == running_state)
-			{
-				Log_d("tc_gateway_example is already running\n");
-				return 0;
-			}			
-		}
-		else if (!strcmp("stop", argv[1]))
-		{
-			if (0 == running_state)
-			{
-				Log_d("tc_gateway_example is already stopped\n");
-				return 0;
-			}
-			running_state = 0;
-			return 0;
-		}
-		else
-		{
-			Log_d("Usage: tc_gateway_example start/stop");
-			return 0;			  
-		}
-	}
-	else
-	{
-		Log_e("Para err, usage: tc_gateway_example start/stop");
-		return 0;
-	}
-	
-	tid = rt_thread_create("gateway", (void (*)(void *))gateway_thread, 
-							NULL, stack_size, RT_THREAD_PRIORITY_MAX / 2 - 1, 10);  
+    if (2 == argc) {
+        if (!strcmp("start", argv[1])) {
+            if (1 == running_state) {
+                Log_d("tc_gateway_example is already running\n");
+                return 0;
+            }
+        } else if (!strcmp("stop", argv[1])) {
+            if (0 == running_state) {
+                Log_d("tc_gateway_example is already stopped\n");
+                return 0;
+            }
+            running_state = 0;
+            return 0;
+        } else {
+            Log_d("Usage: tc_gateway_example start/stop");
+            return 0;
+        }
+    } else {
+        Log_e("Para err, usage: tc_gateway_example start/stop");
+        return 0;
+    }
 
-    if (tid != RT_NULL)
-    {
+    tid = rt_thread_create("gateway", (void (*)(void *))gateway_thread,
+                           NULL, stack_size, RT_THREAD_PRIORITY_MAX / 2 - 1, 10);
+
+    if (tid != RT_NULL) {
         rt_thread_startup(tid);
     }
 

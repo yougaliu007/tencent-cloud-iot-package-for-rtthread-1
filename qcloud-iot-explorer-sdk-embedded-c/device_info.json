@@ -1,12 +1,12 @@
 {
     "auth_mode":"KEY",
 
-    "productId":"0WUKPUCOTC",
+    "productId":"PRODUCT_ID",
     "productSecret":"YOUR_PRODUCT_SECRET",
-    "deviceName":"GW001",
+    "deviceName":"YOUR_DEV_NAME",
 
     "key_deviceinfo":{    
-        "deviceSecret":"lKOlCueXsih1OZdjdd2TWA=="
+        "deviceSecret":"YOUR_IOT_PSK"
     },
 
     "cert_deviceinfo":{
@@ -18,12 +18,14 @@
         "subdev_num":6,
         "subdev_list":
         [
-                {"sub_productId": "BK7EEF4UIB", "sub_devName": "dev001"},
-                {"sub_productId": "BK7EEF4UIB", "sub_devName": "dev002"},
-                {"sub_productId": "BK7EEF4UIB", "sub_devName": "dev003"},
-                {"sub_productId": "7P3KIFQ1JD", "sub_devName": "test001"},
-                {"sub_productId": "7P3KIFQ1JD", "sub_devName": "test002"},
-                {"sub_productId": "7P3KIFQ1JD", "sub_devName": "test003"}               
+                {"sub_productId": "WPDA0S6S08", "sub_devName": "dev001"},
+                {"sub_productId": "WPDA0S6S08", "sub_devName": "dev002"},
+                {"sub_productId": "WPDA0S6S08", "sub_devName": "dev003"},
+                {"sub_productId": "Y8T6NB8DM0", "sub_devName": "test001"},
+                {"sub_productId": "Y8T6NB8DM0", "sub_devName": "test002"},
+                {"sub_productId": "Y8T6NB8DM0", "sub_devName": "test003"}               
         ]     
-    }
+    },
+	
+    "region":"china"
 }

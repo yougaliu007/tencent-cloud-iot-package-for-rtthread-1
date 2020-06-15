@@ -22,8 +22,6 @@ extern "C" {
 #include <string.h>
 #include "qcloud_iot_import.h"
 
-static char now_time_str[20] = {0};
-
 uint32_t HAL_GetTimeMs(void)
 {
 #if (RT_TICK_PER_SECOND == 1000)
@@ -45,16 +43,15 @@ long HAL_Timer_current_sec(void)
     return HAL_GetTimeMs() / 1000;
 }
 
-
-char* HAL_Timer_current(void) 
+char *HAL_Timer_current(char *time_str)
 {
     long time_sec;
 
     time_sec = HAL_Timer_current_sec();
-    memset(now_time_str, 0, 20);
-    snprintf(now_time_str, 20, "%ld", time_sec);
+    memset(time_str, 0, 20);
+    snprintf(time_str, 20, "%ld", time_sec);
 
-    return now_time_str;
+    return time_str;
 }
 
 

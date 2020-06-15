@@ -134,29 +134,52 @@ void HAL_SleepMs(_IN_ uint32_t ms)
     (void)rt_thread_delay(rt_tick_from_millisecond(ms));
 }
 
-#if ((defined(MULTITHREAD_ENABLED)) || (defined AT_TCP_ENABLED))
+#ifdef MULTITHREAD_ENABLED
 
-void * HAL_ThreadCreate(uint16_t stack_size, int priority, char * taskname, void *(*fn)(void*), void* arg)
+// platform-dependant thread routine/entry function
+static void _HAL_thread_func_wrapper_(void *ptr)
 {
-#define DEFAULT_TASK_TICK  10
-	rt_thread_t tid;
-	tid = rt_thread_create(taskname, fn, arg, stack_size, priority, DEFAULT_TASK_TICK);  
+    ThreadParams *params = (ThreadParams *)ptr;
 
-    if (tid != RT_NULL) {
-        rt_thread_startup(tid);
+    params->thread_func(params->user_arg);
+
+//    rt_thread_delete(params->thread_id);
+}
+
+// platform-dependant thread create function
+int HAL_ThreadCreate(ThreadParams *params)
+{
+    int ret;
+
+    if (params == NULL)
+        return QCLOUD_ERR_INVAL;
+
+    if (params->thread_name == NULL) {
+        HAL_Printf("thread name is required for FreeRTOS platform!\n");
+        return QCLOUD_ERR_INVAL;
+    }
+    params->thread_id = rt_thread_create(params->thread_name, _HAL_thread_func_wrapper_, \
+                                         (void *)params, params->stack_size, params->priority, params->stack_size);
+
+    if (params->thread_id != RT_NULL) {
+        rt_thread_startup((rt_thread_t)params->thread_id);
+        ret = QCLOUD_RET_SUCCESS;
+    } else {
+        ret =  QCLOUD_ERR_FAILURE;
     }
 
-	return (void *)tid;
-#undef 	DEFAULT_TASK_TICK
+    return ret;
 }
+
 
 int HAL_ThreadDestroy(void* threadId)
 {
     int ret;
-	ret = rt_thread_delete((rt_thread_t)threadId);
+    ret = rt_thread_delete((rt_thread_t)threadId);
 
     return ret;
 }
+
 #endif
 
 

@@ -22,13 +22,9 @@
 
 
 #define DATA_TEMPLATE_THREAD_STACK_SIZE 6144
-#define YEILD_THREAD_STACK_SIZE 	4096
+#define YEILD_THREAD_STACK_SIZE     4096
 
 static uint8_t running_state = 0;
-static bool sg_yield_thread_running = true;
-
-
-
 #ifdef AUTH_MODE_CERT
 static char sg_cert_file[PATH_MAX + 1];      // full path of device cert file
 static char sg_key_file[PATH_MAX + 1];       // full path of device key file
@@ -63,7 +59,7 @@ static void update_events_timestamp(sEvent *pEvents, int count)
 static void event_post_cb(void *pClient, MQTTMessage *msg)
 {
     Log_d("Reply:%.*s", msg->payload_len, msg->payload);
-//    IOT_Event_clearFlag(pClient, FLAG_EVENT0 | FLAG_EVENT1 | FLAG_EVENT2); 
+//    IOT_Event_clearFlag(pClient, FLAG_EVENT0 | FLAG_EVENT1 | FLAG_EVENT2);
 }
 
 //event check and post
@@ -82,7 +78,7 @@ static void eventPostCheck(void *client)
             if ((eflag & (1 << i))&ALL_EVENTS_MASK) {
                 pEventList[event_count++] = &(g_events[i]);
                 update_events_timestamp(&g_events[i], 1);
-				IOT_Event_clearFlag(client, (1 << i)&ALL_EVENTS_MASK);
+                IOT_Event_clearFlag(client, (1 << i)&ALL_EVENTS_MASK);
             }
         }
 
@@ -364,30 +360,6 @@ static int _get_sys_info(void *handle, char *pJsonDoc, size_t sizeOfBuffer)
     return IOT_Template_JSON_ConstructSysInfo(handle, pJsonDoc, sizeOfBuffer, plat_info, self_info);
 }
 
-#ifdef MULTITHREAD_ENABLED
-static void *template_yield_thread(void *ptr)
-{
-#define THREAD_SLEEP_INTERVAL_MS 1
-    int rc = QCLOUD_RET_SUCCESS;
-    void *pClient = ptr;
-
-    Log_d("template yield thread start ...");
-    while (sg_yield_thread_running) {
-        rc = IOT_Template_Yield(pClient, 200);
-        if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
-            HAL_SleepMs(THREAD_SLEEP_INTERVAL_MS);
-            continue;
-        } else if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
-            Log_e("Something goes error: %d", rc);
-        }
-        HAL_SleepMs(THREAD_SLEEP_INTERVAL_MS);
-    }
-    return NULL;
-#undef  THREAD_SLEEP_INTERVAL_MS
-}
-#endif
-
-
 static int data_template_thread(void)
 {
     int rc;
@@ -415,12 +387,8 @@ static int data_template_thread(void)
     }
 
 #ifdef MULTITHREAD_ENABLED
-    rt_thread_t yield_thread_t;
-    yield_thread_t = HAL_ThreadCreate(YEILD_THREAD_STACK_SIZE, 
-										RT_THREAD_PRIORITY_MAX / 2 - 2,\
-										"template_yield_thread", template_yield_thread, client);
-    if (yield_thread_t == NULL) {
-        Log_e("create yield thread fail");
+    if (QCLOUD_RET_SUCCESS != IOT_Template_Start_Yield_Thread(client)) {
+        Log_e("start template yield thread fail");
         goto exit;
     }
 #endif
@@ -437,7 +405,7 @@ static int data_template_thread(void)
         Log_i("Register data template propertys Success");
     } else {
         Log_e("Register data template propertys Failed: %d", rc);
-         goto exit;
+        goto exit;
     }
 
     //register data template actions here
@@ -469,16 +437,16 @@ static int data_template_thread(void)
     } else {
         Log_d("Get data status success");
     }
-	
-	running_state = 1;
+
+    running_state = 1;
 
     while (IOT_Template_IsConnected(client) || rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT
            || rc == QCLOUD_RET_MQTT_RECONNECTED || QCLOUD_RET_SUCCESS == rc) {
 
-		if(0 == running_state){
-			break;
-		}
-		
+        if(0 == running_state) {
+            break;
+        }
+
 #ifndef MULTITHREAD_ENABLED
         rc = IOT_Template_Yield(client, 200);
         if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
@@ -538,22 +506,15 @@ static int data_template_thread(void)
 
         HAL_SleepMs(3000);
     }
-		   
+
 exit:
 
-	sg_yield_thread_running = false;
-	running_state = 0;
-	
 #ifdef MULTITHREAD_ENABLED
-	sg_yield_thread_running = false;
-	if (NULL != yield_thread_t) {
-//		  HAL_ThreadDestroy((void *)yield_thread_t);
-		 HAL_SleepMs(1000);
-	}
-#endif	
-
+    IOT_Template_Stop_Yield_Thread(client);
+#endif
     rc = IOT_Template_Destroy(client);
-	
+    running_state = 0;
+
     return rc;
 }
 
@@ -561,46 +522,35 @@ static int tc_data_template_example(int argc, char **argv)
 {
     rt_thread_t tid;
     int stack_size = DATA_TEMPLATE_THREAD_STACK_SIZE;
-	
-    //init log level
-	IOT_Log_Set_Level(eLOG_DEBUG);
-	if (2 == argc)
-	{
-		if (!strcmp("start", argv[1]))
-		{
-			if (1 == running_state)
-			{
-				Log_d("tc_data_template_example is already running\n");
-				return 0;
-			}			
-		}
-		else if (!strcmp("stop", argv[1]))
-		{
-			if (0 == running_state)
-			{
-				Log_d("tc_data_template_example is already stopped\n");
-				return 0;
-			}
-			running_state = 0;
-			return 0;
-		}
-		else
-		{
-			Log_d("Usage: tc_data_template_example start/stop");
-			return 0;			  
-		}
-	}
-	else
-	{
-		Log_e("Para err, usage: tc_data_template_example start/stop");
-		return 0;
-	}
-	  	
-	tid = rt_thread_create("data_template", (void (*)(void *))data_template_thread, 
-							NULL, stack_size, RT_THREAD_PRIORITY_MAX / 2 - 1, 10);  
 
-    if (tid != RT_NULL)
-    {
+    //init log level
+    IOT_Log_Set_Level(eLOG_DEBUG);
+    if (2 == argc) {
+        if (!strcmp("start", argv[1])) {
+            if (1 == running_state) {
+                Log_d("tc_data_template_example is already running\n");
+                return 0;
+            }
+        } else if (!strcmp("stop", argv[1])) {
+            if (0 == running_state) {
+                Log_d("tc_data_template_example is already stopped\n");
+                return 0;
+            }
+            running_state = 0;
+            return 0;
+        } else {
+            Log_d("Usage: tc_data_template_example start/stop");
+            return 0;
+        }
+    } else {
+        Log_e("Para err, usage: tc_data_template_example start/stop");
+        return 0;
+    }
+
+    tid = rt_thread_create("data_template", (void (*)(void *))data_template_thread,
+                           NULL, stack_size, RT_THREAD_PRIORITY_MAX / 2 - 1, 10);
+
+    if (tid != RT_NULL) {
         rt_thread_startup(tid);
     }
 
