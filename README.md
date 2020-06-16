@@ -26,18 +26,23 @@ Tencent IOT SDK for rt-thread Package 是基于腾讯云物联网开发平台（
 - RT-Thread env开发工具中使用 `menuconfig` 使能 `Tencent-IoT` 软件包，配置产品及设备信息，并根据产品需求选择合适的应用示例修改新增业务逻辑，也可新增例程编写新的业务逻辑。
 
 ```
- --- Tencent-IoT:  Tencent Cloud IoT Explorer Platform SDK for RT-Thread   
- (0WUKPUCOTC) Config Product Id (NEW)                                      
- (dev001) Config Device Name (NEW)                                         
- (N6B8M91PB4YDTRCpqvOp4w==) Config Device Secret (NEW)                     
- [*]   Enable TLS/DTLS                                                     
-       Select Product Type (Data template protocol)  --->                  
- [ ]   Enable Event (NEW)                                                  
- [ ]   Enable Action (NEW)                                                 
- [*]   Enable Smart_light Sample (NEW)                                     
- [ ]   Enable OTA (NEW)                                                    
- [ ]   Enable GateWay (NEW)                                                
-       Version (latest)  --->                                              
+     --- Tencent-IoT:  Tencent Cloud IoT Explorer Platform SDK for RT-Thread    
+        (0WUKPUCOTC) Config Product Id                                          
+        (dev001) Config Device Name                                             
+        (N6B8M91PB4YDTRCpqvOp4w==) Config Device Secret                         
+        [*]   Enable dynamic register                                           
+        (chBjKw1ER84AAVWZ4s19YKBT) Config Product Key                           
+        [*]   Enable err log upload                                             
+        [*]   Enable multi thread function                                      
+        [*]   Enable TLS/DTLS                                                   
+              Select Product Type (Data template protocol)  --->                
+        [*]   Enable Event                                                      
+        [*]   Enable Action                                                     
+        [*]   Enable Smart_light Sample                                         
+        [*]   Enable OTA                                                        
+                Config OTA download by https or http (Download by http)  --->   
+        [*]   Enable GateWay                                                    
+              Version (latest)  --->
 ```
 
 - 选项说明
@@ -47,6 +52,10 @@ Tencent IOT SDK for rt-thread Package 是基于腾讯云物联网开发平台（
 `Config Device Name`：配置设备名，平台创建生成。
 
 `Config Device Secret`：配置设备密钥，平台创建生成，考虑到嵌入式设备大多没有文件系统，暂时没有支持证书设备配置。
+
+`Enable dynamic register`： 是否使能动态注册功能及示例，若使能，需配置动态注册的产品密钥。
+
+`Enable err log upload`： 是否使能错误日志上传云端。
 
 `Enable TLS/DTLS`： 是否使能TLS，若使能，则会关联选中mbedTLS软件包。
 
@@ -74,26 +83,30 @@ Tencent IOT SDK for rt-thread Package 是基于腾讯云物联网开发平台（
 
 2. 执行示例程序：
 
-### 2.4 运行demo程序
+### 2.3 运行demo程序
 系统启动后，在 MSH 中使用命令执行：
 
-#### 2.4.1 数据模板智能灯 + TLS示例：
+#### 2.3.1 数据模板智能灯 + TLS示例：
 - 示例说明：该示例展示了设备和[物联网开发平台](https://cloud.tencent.com/product/iotexplorer)基于[数据模板协议](https://cloud.tencent.com/document/product/1081/34916)的通信示例，关于数据模板协议参见链接说明，使能TLS，示例在物联网开发平台下发控制灯为红色的命令，设备端收取了消息，打印颜色，并上报对应消息。
 
 - 配置选项
 ```
 --- Tencent-IoT:  Tencent Cloud IoT Explorer Platform SDK for RT-Thread     
-   (0WUKPUCOTC) Config Product Id                                           
-   (dev001) Config Device Name                                              
-   (N6B8M91PB4YDTRCpqvOp4w==) Config Device Secret                          
-   [*]   Enable TLS/DTLS                                                    
-         Select Product Type (Data template protocol)  --->                 
-   [*]   Enable Event                                                       
-   [*]   Enable Action                                                      
-   [*]   Enable Smart_light Sample                                          
-   [ ]   Enable OTA                                                         
-   [ ]   Enable GateWay                                                     
-         Version (latest)  --->       
+--- Tencent-IoT:  Tencent Cloud IoT Explorer Platform SDK for RT-Thread               
+   (0WUKPUCOTC) Config Product Id                                                     
+   (dev001) Config Device Name                                                        
+   (N6B8M91PB4YDTRCpqvOp4w==) Config Device Secret                                    
+   [ ]   Enable dynamic register                                                      
+   [ ]   Enable err log upload                                                        
+   [ ]   Enable multi thread function                                                 
+   [*]   Enable TLS/DTLS                                                              
+         Select Product Type (Data template protocol)  --->                           
+   [*]   Enable Event                                                                 
+   [*]   Enable Action                                                                
+   [*]   Enable Smart_light Sample                                                    
+   [ ]   Enable OTA                                                                   
+   [ ]   Enable GateWay                                                               
+         Version (latest)  --->                                                       
 ```
 
 - 运行示例
@@ -176,16 +189,263 @@ INF|48|light_data_template_sample.c|data_template_light_thread(761): data templa
 INF|49|light_data_template_sample.c|OnReportReplyCallback(416): recv report_reply(ack=0): {"method":"report_reply","clientToken":"0WUKPUCOTC-9","code":0,"status":"success"}
 ```
 
-### 2.5 服务端下行消息控制
+#### 2.3.2 OTA示例：
+- 示例说明：该示例展示了设备基于[物联网开发平台](https://cloud.tencent.com/product/iotexplorer)实现[设备固件升级](https://cloud.tencent.com/document/product/1081/39359)，固件升级的消息通道及状态上报走MQTT，固件下载通道支持HTTPS和HTTP。
+>! 若固件下载使能HTTPS，会关联选中mbedTLS软件包，需要将 `MBEDTLS_SSL_MAX_CONTENT_LEN`配置为16K
+
+- 配置选项
+```
+  --- Tencent-IoT:  Tencent Cloud IoT Explorer Platform SDK for RT-Thread         
+  (0WUKPUCOTC) Config Product Id                                                  
+  (dev001) Config Device Name                                                     
+  (N6B8M91PB4YDTRCpqvOp4w==) Config Device Secret                                 
+  [ ]   Enable dynamic register                                                   
+  [ ]   Enable err log upload                                                     
+  [ ]   Enable multi thread function                                              
+  -*-   Enable TLS/DTLS                                                           
+        Select Product Type (Data template protocol)  --->                        
+  [ ]   Enable Event                                                              
+  [ ]   Enable Action                                                             
+  [ ]   Enable Smart_light Sample                                                 
+  [*]   Enable OTA                                                                
+          Config OTA download by https or http (Download by https)  --->          
+  [ ]   Enable GateWay                                                            
+        Version (latest)  --->                                                    
+```
+
+- 运行示例
+
+```
+ \ | /
+- RT -     Thread Operating System
+ / | \     4.0.3 build Jun 16 2020
+ 2006 - 2020 Copyright by rt-thread team
+lwIP-2.0.2 initialized!
+[I/sal.skt] Socket Abstraction Layer initialize success.
+[I/SDIO] SD card capacity 65536 KB.
+msh />rt-thread
+msh />tc_ota_example start
+msh />DBG|13|HAL_TLS_mbedtls.c|HAL_TLS_Connect(228):  Connecting to /0WUKPUCOTC.iotcloud.tencentdevices.com/8883...
+DBG|13|HAL_TLS_mbedtls.c|HAL_TLS_Connect(233):  Setting up the SSL/TLS structure...
+DBG|13|HAL_TLS_mbedtls.c|HAL_TLS_Connect(285): Performing the SSL/TLS handshake...
+INF|13|mqtt_client.c|IOT_MQTT_Construct(117): mqtt connect with id: 7849s success
+INF|13|ota_mqtt_sample.c|ota_thread(314): Cloud Device Construct Success
+DBG|13|mqtt_client_subscribe.c|qcloud_iot_mqtt_subscribe(147): topicName=$ota/update/0WUKPUCOTC/dev001|packet_id=39516
+INF|13|ota_mqtt_sample.c|event_handler(69): subscribe success, packet-id=39516
+DBG|13|ota_mqtt.c|_otamqtt_event_callback(124): OTA topic subscribe success
+ERR|14|ota_mqtt_sample.c|get_local_fw_version(118): open file ./local_fw_info.json failed
+DBG|14|ota_mqtt_sample.c|ota_thread(331): local_ver:(null) local_md5:(null), local_size:(null)
+DBG|14|mqtt_client_publish.c|qcloud_iot_mqtt_publish(339): publish topic seq=39517|topicName=$ota/report/0WUKPUCOTC/dev001|payload={"type": "report_version", "report":{"version":"1.0.0"}}
+INF|14|ota_mqtt_sample.c|ota_thread(342): wait for ota upgrade command...
+INF|14|ota_mqtt_sample.c|event_handler(81): publish success, packet-id=39517
+DBG|14|ota_mqtt.c|_otamqtt_upgrage_cb(110): topic=$ota/update/0WUKPUCOTC/dev001
+INF|14|ota_mqtt.c|_otamqtt_upgrage_cb(111): len=86, topic_msg={"result_code":0,"result_msg":"success","type":"report_version_rsp","version":"1.0.0"}
+INF|14|ota_client.c|_ota_callback(103): Report version success!
+INF|17|ota_mqtt_sample.c|ota_thread(342): wait for ota upgrade command...
+INF|19|ota_mqtt_sample.c|ota_thread(342): wait for ota upgrade command...
+INF|21|ota_mqtt_sample.c|ota_thread(342): wait for ota upgrade command...
+INF|24|ota_mqtt_sample.c|ota_thread(342): wait for ota upgrade command...
+INF|26|ota_mqtt_sample.c|ota_thread(342): wait for ota upgrade command...
+DBG|26|ota_mqtt.c|_otamqtt_upgrage_cb(110): topic=$ota/update/0WUKPUCOTC/dev001
+INF|26|ota_mqtt.c|_otamqtt_upgrage_cb(111): len=454, topic_msg={"file_size":420139,"md5sum":"de113bec77a2931b4cb3cfc42430b346","type":"update_firmware","url":"https://ota-1255858890.cos.ap-guangzhou.myqcloud.com/100005337755_0WUKPUCOTC_2.0.0?sign=q-sign-algorithm%3Dsha1%26q-ak%3DAKIDdO8ldrUa0Uts4H5Gzx6FZ9nfedjpiCd7%26q-sign-time%3D1592277704%3B1592364104%26q-key-time%3D1592277704%3B1592364104%26q-header-list%3D%26q-url-param-list%3D%26q-signature%3Dd15ec668f982ea2461316b5af6e4e86afb601b7a%00","version":"2.0.0"}
+
+DBG|26|ota_client.c|IOT_OTA_StartDownload(347): to download FW from offset: 0, size: 420139
+DBG|26|ota_fetch.c|ofc_Init(86): head_content:Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Encoding: gzip, deflate
+Range: bytes=0-420139
+
+DBG|26|HAL_TLS_mbedtls.c|_mbedtls_client_init(148): psk/pskid is empty!|psk=(null)|psd_id=
+DBG|26|HAL_TLS_mbedtls.c|HAL_TLS_Connect(228):  Connecting to /ota-1255858890.cos.ap-guangzhou.myqcloud.com/443...
+DBG|26|HAL_TLS_mbedtls.c|HAL_TLS_Connect(233):  Setting up the SSL/TLS structure...
+DBG|26|HAL_TLS_mbedtls.c|HAL_TLS_Connect(285): Performing the SSL/TLS handshake...
+DBG|27|utils_httpc.c|qcloud_http_client_connect(744): http client connect success
+DBG|27|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$ota/report/0WUKPUCOTC/dev001|payload={"type": "report_progress", "report": {"progress": {"state":"downloading", "percent":"0", "result_code":"0", "result_msg":""}, "version": "2.0.0"}}
+DBG|27|ota_mqtt_sample.c|ota_thread(419): 4999 bytes receved
+DBG|27|ota_mqtt_sample.c|ota_thread(419): 4999 bytes receved
+DBG|27|ota_mqtt_sample.c|ota_thread(419): 4999 bytes receved
+DBG|28|ota_mqtt_sample.c|ota_thread(419): 4999 bytes receved
+DBG|28|ota_mqtt_sample.c|ota_thread(419): 4999 bytes receved
+                      .
+                      .
+DBG|44|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$ota/report/0WUKPUCOTC/dev001|payload={"type": "report_progress", "report": {"progress": {"state":"downloading", "percent":"98", "result_code":"0", "result_msg":""}, "version": "2.0.0"}}
+DBG|44|ota_mqtt_sample.c|ota_thread(419): 4999 bytes receved
+DBG|44|ota_mqtt_sample.c|ota_thread(419): 4999 bytes receved
+DBG|44|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$ota/report/0WUKPUCOTC/dev001|payload={"type": "report_progress", "report": {"progress": {"state":"downloading", "percent":"100", "result_code":"0", "result_msg":""}, "version": "2.0.0"}}
+DBG|44|ota_mqtt_sample.c|ota_thread(419): 223 bytes receved
+DBG|44|ota_client.c|IOT_OTA_Ioctl(631): origin=de113bec77a2931b4cb3cfc42430b346, now=de113bec77a2931b4cb3cfc42430b346
+INF|44|ota_mqtt_sample.c|ota_thread(459): The firmware is valid
+DBG|46|mqtt_client_publish.c|qcloud_iot_mqtt_publish(339): publish topic seq=39518|topicName=$ota/report/0WUKPUCOTC/dev001|payload={"type": "report_progress", "report":{"progress":{"state":"burning", "result_code":"0", "result_msg":""}, "version":"2.0.0"}}
+INF|47|ota_mqtt_sample.c|event_handler(81): publish success, packet-id=39518
+DBG|47|mqtt_client_publish.c|qcloud_iot_mqtt_publish(339): publish topic seq=39519|topicName=$ota/report/0WUKPUCOTC/dev001|payload={"type": "report_progress", "report":{"progress":{"state":"done", "result_code":"0", "result_msg":""}, "version":"2.0.0"}}
+INF|48|ota_mqtt_sample.c|event_handler(81): publish success, packet-id=39519
+INF|49|ota_mqtt.c|_otamqtt_event_callback(138): OTA topic has been unsubscribed
+INF|49|mqtt_client_connect.c|qcloud_iot_mqtt_disconnect(474): mqtt disconnect!
+INF|49|mqtt_client.c|IOT_MQTT_Destroy(181): mqtt release!
+```
+
+#### 2.3.2 网关示例：
+- 示例说明：该示例展示了设备基于[物联网开发平台](https://cloud.tencent.com/product/iotexplorer)通过网关代理子设备上下线及消息收发，网关示例在控制台的相关操作参阅[网关设备快速入门](https://github.com/tencentyun/qcloud-iot-explorer-sdk-embedded-c/blob/master/docs/%E7%BD%91%E5%85%B3%E8%AE%BE%E5%A4%87%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8.md)。
+>! 网关示例默认提供了一组测试用的网关和子设备信息，但有可能多个开发者在同时使用，这样会导致互踢。建议最好替换为自己的网关和子设备信息。
+
+- 配置选项
+```
+  --- Tencent-IoT:  Tencent Cloud IoT Explorer Platform SDK for RT-Thread         
+  (0WUKPUCOTC) Config Product Id                                                  
+  (dev001) Config Device Name                                                     
+  (N6B8M91PB4YDTRCpqvOp4w==) Config Device Secret                                 
+  [ ]   Enable dynamic register                                                   
+  [ ]   Enable err log upload                                                     
+  [ ]   Enable multi thread function                                              
+  -*-   Enable TLS/DTLS                                                           
+        Select Product Type (Data template protocol)  --->                        
+  [ ]   Enable Event                                                              
+  [ ]   Enable Action                                                             
+  [ ]   Enable Smart_light Sample                                                 
+  [ ]   Enable OTA                                                                
+          Config OTA download by https or http (Download by https)  --->          
+  [*]   Enable GateWay                                                            
+        Version (latest)  --->                                                    
+```
+
+- 运行示例
+```
+ \ | /
+- RT -     Thread Operating System
+ / | \     4.0.3 build Jun 16 2020
+ 2006 - 2020 Copyright by rt-thread team
+lwIP-2.0.2 initialized!
+[I/sal.skt] Socket Abstraction Layer initialize success.
+[I/SDIO] SD card capacity 65536 KB.
+hello rt-thread
+msh />tc_gateway_example start
+msh />DBG|7|HAL_Device_rtthread.c|HAL_GetGwDevInfo(173): sub device num:6
+DBG|7|HAL_Device_rtthread.c|HAL_GetGwDevInfo(175): 0th subDevPid:BK7EEF4UIB subDevName:dev01
+DBG|7|HAL_Device_rtthread.c|HAL_GetGwDevInfo(175): 1th subDevPid:BK7EEF4UIB subDevName:dev02
+DBG|7|HAL_Device_rtthread.c|HAL_GetGwDevInfo(175): 2th subDevPid:BK7EEF4UIB subDevName:dev03
+DBG|7|HAL_Device_rtthread.c|HAL_GetGwDevInfo(175): 3th subDevPid:7P3KIFQ1JD subDevName:test01
+DBG|7|HAL_Device_rtthread.c|HAL_GetGwDevInfo(175): 4th subDevPid:7P3KIFQ1JD subDevName:test02
+DBG|7|HAL_Device_rtthread.c|HAL_GetGwDevInfo(175): 5th subDevPid:7P3KIFQ1JD subDevName:test03
+DBG|7|HAL_TLS_mbedtls.c|HAL_TLS_Connect(228):  Connecting to /0WUKPUCOTC.iotcloud.tencentdevices.com/8883...
+DBG|7|HAL_TLS_mbedtls.c|HAL_TLS_Connect(233):  Setting up the SSL/TLS structure...
+DBG|7|HAL_TLS_mbedtls.c|HAL_TLS_Connect(285): Performing the SSL/TLS handshake...
+INF|7|mqtt_client.c|IOT_MQTT_Construct(117): mqtt connect with id: u7YuF success
+DBG|7|mqtt_client_subscribe.c|qcloud_iot_mqtt_subscribe(147): topicName=$gateway/operation/result/0WUKPUCOTC/dev001|packet_id=55998
+DBG|7|gateway_api.c|_gateway_event_handler(116): gateway sub|unsub(3) success, packet-id=55998
+DBG|7|gateway_api.c|gateway_yield_thread(38): gateway yield thread start ...
+DBG|8|gateway_api.c|IOT_Gateway_Subdev_Online(219): there is no session, create a new session
+DBG|8|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"online","payload":{"devices":[{"product_id":"BK7EEF4UIB","device_name":"dev01"}]}}
+INF|8|gateway_common.c|_gateway_message_handler(159): client_id(BK7EEF4UIB/dev01), online result 0
+DBG|8|gateway_sample.c|gateway_thread(238): subDev Pid:BK7EEF4UIB devName:dev01 online success.
+DBG|8|gateway_api.c|IOT_Gateway_Subdev_Online(219): there is no session, create a new session
+DBG|8|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"online","payload":{"devices":[{"product_id":"BK7EEF4UIB","device_name":"dev02"}]}}
+INF|8|gateway_common.c|_gateway_message_handler(159): client_id(BK7EEF4UIB/dev02), online result 0
+DBG|8|gateway_sample.c|gateway_thread(238): subDev Pid:BK7EEF4UIB devName:dev02 online success.
+DBG|8|gateway_api.c|IOT_Gateway_Subdev_Online(219): there is no session, create a new session
+DBG|8|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"online","payload":{"devices":[{"product_id":"BK7EEF4UIB","device_name":"dev03"}]}}
+INF|8|gateway_common.c|_gateway_message_handler(159): client_id(BK7EEF4UIB/dev03), online result 0
+DBG|9|gateway_sample.c|gateway_thread(238): subDev Pid:BK7EEF4UIB devName:dev03 online success.
+DBG|9|gateway_api.c|IOT_Gateway_Subdev_Online(219): there is no session, create a new session
+DBG|9|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"online","payload":{"devices":[{"product_id":"7P3KIFQ1JD","device_name":"test01"}]}}
+INF|9|gateway_common.c|_gateway_message_handler(159): client_id(7P3KIFQ1JD/test01), online result 0
+DBG|9|gateway_sample.c|gateway_thread(238): subDev Pid:7P3KIFQ1JD devName:test01 online success.
+DBG|9|gateway_api.c|IOT_Gateway_Subdev_Online(219): there is no session, create a new session
+DBG|9|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"online","payload":{"devices":[{"product_id":"7P3KIFQ1JD","device_name":"test02"}]}}
+INF|9|gateway_common.c|_gateway_message_handler(159): client_id(7P3KIFQ1JD/test02), online result 0
+DBG|9|gateway_sample.c|gateway_thread(238): subDev Pid:7P3KIFQ1JD devName:test02 online success.
+DBG|9|gateway_api.c|IOT_Gateway_Subdev_Online(219): there is no session, create a new session
+DBG|9|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"online","payload":{"devices":[{"product_id":"7P3KIFQ1JD","device_name":"test03"}]}}
+INF|9|gateway_common.c|_gateway_message_handler(159): client_id(7P3KIFQ1JD/test03), online result 0
+DBG|9|gateway_sample.c|gateway_thread(238): subDev Pid:7P3KIFQ1JD devName:test03 online success.
+ERR|9|gateway_sample.c|gateway_thread(265): create sub_dev light thread success
+DBG|9|mqtt_client_subscribe.c|qcloud_iot_mqtt_subscribe(147): topicName=$thing/down/property/BK7EEF4UIB/dev02|packet_id=55999
+DBG|9|sub_dev001.c|sub_dev1_thread(556): sub_dev1_thread ...
+INF|9|qcloud_iot_devDBG|9|mqtt_client_subscribe.c|qcloud_iot_mqtt_subscribe(147): topicName=$thing/down/property/BK7EEF4UIB/dev03|packet_id=56000
+DBG|9|mqtt_client_subscribe.c|qcloud_iot_mqtt_subscribe(147): topicName=$thing/down/property/7P3KIFQ1JD/test01|packet_id=56001
+DBG|9|mqtt_client_subscribe.c|qcloud_iot_mqtt_subscribe(147): topicName=$thiice.c|iot_device_info_set(55): SDK_Ver: 3.1.3, Product_ID: BK7EEF4UIB, Device_Name: dev01
+ng/down/property/7P3KIFQ1JD/test02|packet_id=56002
+DBG|9|mqtt_client_subscribe.c|qcloud_iot_mqtt_subscribe(147): topicName=$thing/down/property/BK7EEF4UIB/dev01|packet_id=56003
+INF|9|sub_dev001.c|DBG|9|mqtt_client_subscribe.c|qcloud_iot_mqtt_subscribe(147): topicName=$thing/down/property/7P3KIFQ1JD/test03|packet_id=56004
+suDBG|9|gateway_api.c|_gateway_event_handler(116): gateway sub|unsub(3) success, packet-id=55999
+INF|9|gateway_sample.c|_event_handler(81): subscribe success, packet-id=55999
+b_dev1_thread(566): Cloud Device Construct Success
+DBG|9|sub_dev001.c|_usr_init(335): add your init code here
+INF|9|sub_dev001.c|_register_data_template_property(376): data template property=power_switch registered.
+INF|9|sub_dev001.c|_register_data_template_property(376): data template property=color registered.
+INF|9|sub_dev001.c|_register_data_template_property(376): data template property=brightness registered.
+INF|9|sub_dev001.c|_register_data_template_property(376): data template property=name registered.
+INF|9|sub_dev001.c|sub_dev1_thread(588): Register data template propertys Success
+DBG|9|gateway_api.c|_gateway_event_handler(116): gateway sub|unsub(3) success, packet-id=56001
+INF|9|gateway_sample.c|_event_handler(81): subscribe success, packet-id=56001
+DBG|9|gateway_api.c|_gateway_event_handler(116): gateway sub|unsub(3) success, packet-id=56003
+INF|9|gateway_sample.c|_event_handler(81): subscribe success, packet-id=56003
+DBG|9|gateway_api.c|_gateway_event_handler(116): gateway sub|unsub(3) success, packet-id=56000
+INF|9|gateway_sample.c|_event_handler(81): subscribe success, packet-id=56000
+DBG|9|gateway_api.c|_gateway_event_handler(116): gateway sub|unsub(3) success, packet-id=56002
+INF|9|gateway_sample.c|_event_handler(81): subscribe success, packet-id=56002
+DBG|9|gateway_api.c|_gateway_event_handler(116): gateway sub|unsub(3) success, packet-id=56004
+INF|9|gateway_sample.c|_event_handler(81): subscribe success, packet-id=56004
+DBG|10|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$thing/up/property/BK7EEF4UIB/dev01|payload={"method":"report_info", "clientToken":"BK7EEF4UIB-0", "params":{"module_hardinfo":"ESP8266","module_softinfo":"V1.0","fw_ver":"3.1.3","imei":"11-22-33-44","lat":"22.546015","lon":"113.941125", "device_label":{"append_info":"your self define info"}}}
+DBG|10|data_template_client.c|_reply_ack_cb(194): replyAck=0
+DBG|10|data_template_client.c|_reply_ack_cb(197): Received Json Document={"method":"report_info_reply","clientToken":"BK7EEF4UIB-0","code":0,"status":"success"}
+DBG|10|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$thing/up/property/BK7EEF4UIB/dev01|payload={"method":"get_status", "clientToken":"BK7EEF4UIB-1"}
+DBG|10|data_template_client.c|_get_status_reply_ack_cb(211): replyAck=0
+DBG|10|data_template_client.c|_get_status_reply_ack_cb(215): Received Json Document={"method":"get_status_reply","clientToken":"BK7EEF4UIB-1","code":0,"status":"success","data":{"reported":{"brightness":0,"name":"","power_switch":0,"color":0}}}
+DBG|11|sub_dev001.c|sub_dev1_thread(626): Get data status success
+DBG|11|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$thing/up/property/BK7EEF4UIB/dev01|payload={"method":"report", "clientToken":"BK7EEF4UIB-2", "params":{"power_switch":0,"color":0,"brightness":0,"name":""}}
+INF|11|sub_dev001.c|sub_dev1_thread(665): data template reporte success
+INF|11|sub_dev001.c|OnReportReplyCallback(361): recv report_reply(ack=0): {"method":"report_reply","clientToken":"BK7EEF4UIB-2","code":0,"status":"success"}
+DBG|11|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$thing/up/property/BK7EEF4UIB/dev02|payload={"method":"report","clientToken":"123","params":{}}
+DBG|11|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$thing/up/property/BK7EEF4UIB/dev03|payload={"method":"report","clientToken":"123","params":{}}
+DBG|11|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$thing/up/property/7P3KIFQ1JD/test01|payload={"method":"report","clientToken":"123","params":{}}
+DBG|11|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$thing/up/property/7P3KIFQ1JD/test02|payload={"method":"report","clientToken":"123","params":{}}
+DBG|11|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$thing/up/property/7P3KIFQ1JD/test03|payload={"method":"report","clientToken":"123","params":{}}
+INF|11|gateway_sample.c|_message_handler(131): Receive Message With topicName:$thing/down/property/BK7EEF4UIB/dev02, payload:{"method":"report_reply","clientToken":"123","code":0,"status":"success"}
+INF|11|gateway_sample.c|_message_handler(131): Receive Message With topicName:$thing/down/property/7P3KIFQ1JD/test01, payload:{"method":"report_reply","clientToken":"123","code":0,"status":"success"}
+INF|11|gateway_sample.c|_message_handler(131): Receive Message With topicName:$thing/down/property/7P3KIFQ1JD/test02, payload:{"method":"report_reply","clientToken":"123","code":0,"status":"success"}
+INF|11|gateway_sample.c|_message_handler(131): Receive Message With topicName:$thing/down/property/7P3KIFQ1JD/test03, payload:{"method":"report_reply","clientToken":"123","code":0,"status":"success"}
+INF|11|gateway_sample.c|_message_handler(131): Receive Message With topicName:$thing/down/property/BK7EEF4UIB/dev03, payload:{"method":"report_reply","clientToken":"123","code":0,"status":"success"}
+DBG|17|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$thing/up/property/BK7EEF4UIB/dev01|payload={"method":"report", "clientToken":"BK7EEF4UIB-3", "params":{"power_switch":0,"color":0,"brightness":0,"name":""}}
+INF|17|sub_dev001.c|sub_dev1_thread(665): data template reporte success
+INF|17|sub_dev001.c|OnReportReplyCallback(361): recv report_reply(ack=0): {"method":"report_reply","clientToken":"BK7EEF4UIB-3","code":0,"status":"success"}
+msh />tc_gateway_example stop 
+msh />DBG|22|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"offline","payload":{"devices":[{"product_id":"BK7EEF4UIB","device_name":"dev01"}]}}
+INF|22|gateway_common.c|_gateway_message_handler(164): client_id(BK7EEF4UIB/dev01), offline result 0
+DBG|22|gateway_sample.c|gateway_thread(342): subDev Pid:BK7EEF4UIB devName:dev01 offline success.
+DBG|22|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"offline","payload":{"devices":[{"product_id":"BK7EEF4UIB","device_name":"dev02"}]}}
+INF|22|gateway_common.c|_gateway_message_handler(164): client_id(BK7EEF4UIB/dev02), offline result 0
+DBG|22|gateway_sample.c|gateway_thread(342): subDev Pid:BK7EEF4UIB devName:dev02 offline success.
+DBG|22|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"offline","payload":{"devices":[{"product_id":"BK7EEF4UIB","device_name":"dev03"}]}}
+INF|22|gateway_common.c|_gateway_message_handler(164): client_id(BK7EEF4UIB/dev03), offline result 0
+DBG|22|gateway_sample.c|gateway_thread(342): subDev Pid:BK7EEF4UIB devName:dev03 offline success.
+DBG|22|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"offline","payload":{"devices":[{"product_id":"7P3KIFQ1JD","device_name":"test01"}]}}
+INF|22|gateway_common.c|_gateway_message_handler(164): client_id(7P3KIFQ1JD/test01), offline result 0
+DBG|23|gateway_sample.c|gateway_thread(342): subDev Pid:7P3KIFQ1JD devName:test01 offline success.
+DBG|23|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"offline","payload":{"devices":[{"product_id":"7P3KIFQ1JD","device_name":"test02"}]}}
+INF|23|gateway_common.c|_gateway_message_handler(164): client_id(7P3KIFQ1JD/test02), offline result 0
+DBG|23|gateway_sample.c|gateway_thread(342): subDev Pid:7P3KIFQ1JD devName:test02 offline success.
+DBG|23|mqtt_client_publish.c|qcloud_iot_mqtt_publish(345): publish packetID=0|topicName=$gateway/operation/0WUKPUCOTC/dev001|payload={"type":"offline","payload":{"devices":[{"product_id":"7P3KIFQ1JD","device_name":"test03"}]}}
+INF|23|gateway_common.c|_gateway_message_handler(164): client_id(7P3KIFQ1JD/test03), offline result 0
+DBG|23|gateway_sample.c|gateway_thread(342): subDev Pid:7P3KIFQ1JD devName:test03 offline success.
+INF|24|mqtt_client_connect.c|qcloud_iot_mqtt_disconnect(474): mqtt disconnect!
+INF|24|mqtt_client.c|IOT_MQTT_Destroy(181): mqtt release!
+```
+
+
+### 2.4 控制台相关操作
+#### 2.4.1 在线调试
 - [物联网开发平台](https://cloud.tencent.com/product/iotexplorer)可以通过控制台直接调试，如下截图
 ![control](https://main.qcloudimg.com/raw/6027fc232f761b4726a13eb964721b09.jpg)
 
+#### 2.4.2 设备日志查询
+![log](https://main.qcloudimg.com/raw/5d298db54110e0c389d10e93b1efcf2b.jpg)
 
+#### 2.4.3 设备事件查询
+![event](https://main.qcloudimg.com/raw/66cfd99526d55e91778fe58e11f7d159.jpg)
 
-### 2.6 其他示例说明
+### 2.5 其他示例说明
  关于 SDK 的更多使用方式及接口了解, 参见 `qcloud_iot_api_export.h`，其他示例不再一一列举。
 
-### 2.7 可变参数配置
+### 2.6 可变参数配置
 开发者可以根据具体场景需求，配置相应的参数，满足实际业务的运行。可变接入参数包括：
 1. MQTT 心跳消息发送周期, 单位: ms 
 2. MQTT 阻塞调用(包括连接, 订阅, 发布等)的超时时间, 单位:ms。 建议 5000 ms

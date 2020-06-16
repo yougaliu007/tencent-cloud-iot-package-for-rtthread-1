@@ -416,7 +416,7 @@ int ota_thread(void)
                     }
 					fflush(fp);
 #else
-					Log_e("%d bytes receved",len);				
+					Log_d("%d bytes receved",len);				
 #endif					
                 } else if (len < 0) {
                     Log_e("download fail rc=%d", len);
